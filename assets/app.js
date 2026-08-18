@@ -47,11 +47,11 @@ function imgOf(p) {
   const d = ICO[c ? c.icone : 'loja'];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
     <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#272c20"/><stop offset="1" stop-color="#181b13"/></linearGradient></defs>
+      <stop offset="0" stop-color="#f7f8f4"/><stop offset="1" stop-color="#e6e9df"/></linearGradient></defs>
     <rect width="400" height="400" fill="url(#g)"/>
-    <g transform="translate(140 140) scale(5)" fill="none" stroke="#a8b47a" stroke-opacity=".6"
+    <g transform="translate(140 140) scale(5)" fill="none" stroke="#7c856a" stroke-opacity=".75"
        stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${d}</g>
-    <text x="200" y="330" font-family="sans-serif" font-size="15" fill="#a3ab96"
+    <text x="200" y="330" font-family="sans-serif" font-size="15" fill="#8d9581"
        text-anchor="middle">foto em breve</text></svg>`;
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
@@ -89,6 +89,16 @@ const cartTotal = () => cart.reduce((t, i) => {
 function renderCart() {
   const n = cart.reduce((t, i) => t + i.qtd, 0);
   $$('.badge').forEach(b => { b.textContent = n; b.hidden = n === 0; });
+
+  const barra = $('#barra-pedido');
+  if (barra) {
+    barra.hidden = n === 0;
+    document.body.classList.toggle('com-barra', n > 0);
+    if (n) {
+      $('#barra-qtd').textContent = n + (n === 1 ? ' item' : ' itens');
+      $('#barra-total').textContent = money(cartTotal());
+    }
+  }
 
   const body = $('#cart-body'), foot = $('#cart-foot');
   if (!body) return;
@@ -209,8 +219,10 @@ function abrirProduto(id) {
           ${p.sub ? `<div><span>Tipo</span><b>${p.sub}</b></div>` : ''}
           <div><span>Disponibilidade</span><b>${p.disponivel ? 'Em estoque' : 'Sob encomenda'}</b></div>
         </div>
-        <button class="btn btn-primary btn-block" onclick="addToCart('${p.id}');fecharProduto()">Adicionar ao pedido</button>
-        <button class="btn btn-wa btn-block" onclick="pedirItem('${p.id}')">${icon('wa', 18)} Pedir só este item</button>
+        <div class="modal-acoes">
+          <button class="btn btn-primary btn-block" onclick="addToCart('${p.id}');fecharProduto()">Adicionar ao pedido</button>
+          <button class="btn btn-wa btn-block" onclick="pedirItem('${p.id}')">${icon('wa', 18)} Pedir só este item</button>
+        </div>
       </div>
     </div>`;
   $('#modal').classList.add('open');
@@ -233,7 +245,7 @@ function montarHeader() {
 
   $('#header-slot').innerHTML = `
   <div class="topbar"><div class="wrap">
-    <span>${CONFIG.endereco} · ${CONFIG.cidade} · ${CONFIG.horario}</span>
+    <span class="so-desktop">${CONFIG.endereco} · ${CONFIG.cidade} · ${CONFIG.horario}</span>
     <span style="display:flex;gap:14px;align-items:center">
       ${CONFIG.instagram ? `<a href="${CONFIG.instagram}" target="_blank" rel="noopener">${CONFIG.instagramUser || 'Instagram'}</a>` : ''}
       <a href="${waLink('Olá! Vim pelo site.')}" target="_blank">${icon('wa', 14)} <strong>${CONFIG.telefone}</strong></a>
@@ -246,7 +258,7 @@ function montarHeader() {
         <span class="logo-txt"><b>${CONFIG.nome}</b><span>${CONFIG.slogan}</span></span>
       </a>
       <form class="search" onsubmit="return irBusca(event)">
-        <input type="search" id="busca-topo" placeholder="Buscar produto, marca ou calibre...">
+        <input type="search" id="busca-topo" placeholder="O que você procura?">
         <button type="submit" aria-label="Buscar">${icon('busca', 18)}</button>
       </form>
       <div class="header-actions">
@@ -300,7 +312,7 @@ function montarFooter() {
 
 function montarEstruturaComum() {
   document.body.insertAdjacentHTML('beforeend', `
-    <div class="overlay" id="overlay" onclick="closeCart()"></div>
+    <div class="overlay" id="overlay" onclick="closeCart();if(typeof fecharFiltros==='function')fecharFiltros()"></div>
     <aside class="drawer" id="cart-drawer">
       <div class="drawer-head">
         <h3>Meu pedido</h3>
@@ -318,9 +330,15 @@ function montarEstruturaComum() {
     <div class="modal" id="modal" onclick="if(event.target===this)fecharProduto()">
       <div class="modal-card" id="modal-content"></div>
     </div>
-    <a class="wa-float" href="${waLink('Olá! Vim pelo site.')}" target="_blank" aria-label="WhatsApp">${icon('wa', 26)}</a>`);
+    <a class="wa-float" href="${waLink('Olá! Vim pelo site.')}" target="_blank" aria-label="WhatsApp">${icon('wa', 26)}</a>
+    <button class="barra-pedido" id="barra-pedido" onclick="openCart()" hidden>
+      <span class="barra-info"><b id="barra-qtd">0 itens</b><span id="barra-total">R$ 0,00</span></span>
+      <span class="barra-cta">Ver pedido ${icon('seta', 18)}</span>
+    </button>`);
   renderCart();
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { fecharProduto(); closeCart(); } });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { fecharProduto(); closeCart(); if (typeof fecharFiltros === 'function') fecharFiltros(); }
+  });
 }
 
 function irBusca(e) {

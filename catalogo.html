@@ -23,7 +23,11 @@
 
 <div class="wrap catalogo">
   <!-- FILTROS -->
-  <aside class="filtros" id="filtros" hidden>
+  <aside class="filtros" id="filtros">
+    <div class="filtros-titulo">
+      <h3>Filtrar produtos</h3>
+      <button class="icon-btn" onclick="toggleFiltros()" aria-label="Fechar filtros">✕</button>
+    </div>
     <div class="filtro-grupo">
       <h4>Buscar</h4>
       <div class="search" style="display:block">
@@ -44,6 +48,9 @@
     </div>
     <button class="btn btn-ghost btn-block" onclick="limparFiltros()">Limpar filtros</button>
   </aside>
+  <div class="filtros-aplicar">
+    <button class="btn btn-primary btn-block" id="btn-aplicar" onclick="toggleFiltros()">Ver produtos</button>
+  </div>
 
   <!-- RESULTADOS -->
   <main>
@@ -57,6 +64,7 @@
         <option value="az">Nome (A-Z)</option>
       </select>
     </div>
+    <div class="atalhos" id="atalhos"></div>
     <div class="chips" id="chips"></div>
     <div class="grid-produtos" id="grid"></div>
     <div id="sem-resultado" hidden></div>
@@ -91,7 +99,27 @@ function initCatalogo(){
 
 function toggleFiltros(){
   const f = document.getElementById('filtros');
-  f.hidden = !f.hidden;
+  const aberto = f.classList.toggle('aberto');
+  document.getElementById('overlay').classList.toggle('show', aberto);
+  document.body.style.overflow = aberto ? 'hidden' : '';
+}
+
+function montarAtalhos(){
+  const alvo = document.getElementById('atalhos');
+  const itens = [{id:'',nome:'Tudo'},
+    {id:'__tiro',nome:'Caça & Tiro'}, {id:'__pesca',nome:'Pesca'},
+    ...CATEGORIAS.map(c=>({id:c.id,nome:c.nome}))];
+  alvo.innerHTML = itens.map(i=>{
+    const ativo = i.id==='__tiro' ? F.grupo==='tiro'
+                : i.id==='__pesca' ? F.grupo==='pesca'
+                : i.id ? F.cat===i.id : (!F.cat && !F.grupo);
+    return `<button class="atalho ${ativo?'ativo':''}" onclick="atalho('${i.id}')">${i.nome}</button>`;
+  }).join('');
+}
+function atalho(id){
+  if(id==='__tiro' || id==='__pesca'){ F.cat=''; F.sub=''; F.grupo = id==='__tiro'?'tiro':'pesca'; }
+  else { setCat(id); return; }
+  montarFiltros(); render();
 }
 
 function montarFiltros(){
@@ -125,6 +153,10 @@ function montarFiltros(){
 }
 
 function setCat(id){ F.cat = id; F.sub=''; F.grupo=''; montarFiltros(); render(); }
+function fecharFiltros(){
+  const f = document.getElementById('filtros');
+  if(f.classList.contains('aberto')) toggleFiltros();
+}
 function setSub(s){ F.sub = (F.sub===s ? '' : s); montarFiltros(); render(); }
 function toggleMarca(m){
   F.marcas = F.marcas.includes(m) ? F.marcas.filter(x=>x!==m) : [...F.marcas, m];
@@ -184,6 +216,9 @@ function render(){
 
   document.getElementById('count').textContent =
     lista.length + (lista.length===1 ? ' produto encontrado' : ' produtos encontrados');
+  montarAtalhos();
+  const aplicar = document.getElementById('btn-aplicar');
+  if(aplicar) aplicar.textContent = lista.length ? `Ver ${lista.length} produto${lista.length>1?'s':''}` : 'Nenhum produto';
   document.getElementById('grid').innerHTML = lista.map(cardHTML).join('');
 
   const vazio = document.getElementById('sem-resultado');
