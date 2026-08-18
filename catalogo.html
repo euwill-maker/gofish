@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Catálogo — GOFISH Caça &amp; Pesca</title>
+<meta name="description" content="Catálogo completo de armas, munições, artigos táticos e equipamentos de pesca. Monte seu pedido e finalize no WhatsApp.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#12140f">
+<link rel="icon" href="assets/img/favicon.png" type="image/png">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div id="header-slot"></div>
+
+<div class="wrap" style="padding-top:22px">
+  <div class="section-head" style="margin-bottom:14px">
+    <span id="crumb">Catálogo</span>
+    <h2 id="titulo">Todos os produtos</h2>
+  </div>
+</div>
+
+<div class="wrap catalogo">
+  <!-- FILTROS -->
+  <aside class="filtros" id="filtros" hidden>
+    <div class="filtro-grupo">
+      <h4>Buscar</h4>
+      <div class="search" style="display:block">
+        <input type="search" id="busca" placeholder="Nome, marca ou calibre...">
+      </div>
+    </div>
+    <div class="filtro-grupo">
+      <h4>Categorias</h4>
+      <div id="lista-cats"></div>
+    </div>
+    <div class="filtro-grupo">
+      <h4>Marcas</h4>
+      <div id="lista-marcas"></div>
+    </div>
+    <div class="filtro-grupo">
+      <h4>Preço</h4>
+      <div id="lista-precos"></div>
+    </div>
+    <button class="btn btn-ghost btn-block" onclick="limparFiltros()">Limpar filtros</button>
+  </aside>
+
+  <!-- RESULTADOS -->
+  <main>
+    <div class="toolbar">
+      <button class="btn btn-ghost filtros-toggle" onclick="toggleFiltros()" style="height:42px">Filtros</button>
+      <span class="count" id="count"></span>
+      <select id="ordem">
+        <option value="relevancia">Ordenar: relevância</option>
+        <option value="menor">Menor preço</option>
+        <option value="maior">Maior preço</option>
+        <option value="az">Nome (A-Z)</option>
+      </select>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="grid-produtos" id="grid"></div>
+    <div id="sem-resultado" hidden></div>
+  </main>
+</div>
+
+<div id="footer-slot"></div>
+
+<script src="assets/products.js"></script>
+<script src="assets/app.js"></script>
+<script>
+const F = { cat:'', sub:'', grupo:'', q:'', marcas:[], faixa:'' };
+const FAIXAS = [
+  { id:'0-100',     label:'Até R$ 100',            min:0,    max:100 },
+  { id:'100-500',   label:'R$ 100 a R$ 500',       min:100,  max:500 },
+  { id:'500-2000',  label:'R$ 500 a R$ 2.000',     min:500,  max:2000 },
+  { id:'2000+',     label:'Acima de R$ 2.000',     min:2000, max:Infinity }
+];
+
+function initCatalogo(){
+  const p = new URLSearchParams(location.search);
+  F.cat = p.get('cat') || '';
+  F.sub = p.get('sub') || '';
+  F.grupo = p.get('grupo') || '';
+  F.q = p.get('q') || '';
+  document.getElementById('busca').value = F.q;
+  document.getElementById('busca').addEventListener('input', e=>{ F.q = e.target.value; render(); });
+  document.getElementById('ordem').addEventListener('change', render);
+  montarFiltros();
+  render();
+}
+
+function toggleFiltros(){
+  const f = document.getElementById('filtros');
+  f.hidden = !f.hidden;
+}
+
+function montarFiltros(){
+  // categorias (com subcategorias quando a categoria está ativa)
+  document.getElementById('lista-cats').innerHTML =
+    `<div class="cat-link ${!F.cat && !F.grupo ? 'ativo' : ''}" onclick="setCat('')">
+       <span>Todas</span><small>${PRODUTOS.length}</small></div>` +
+    CATEGORIAS.map(c=>{
+      const n = PRODUTOS.filter(x=>x.categoria===c.id).length;
+      const ativo = F.cat===c.id;
+      const subs = ativo ? c.subs.map(s=>{
+        const ns = PRODUTOS.filter(x=>x.categoria===c.id && x.sub===s).length;
+        if(!ns) return '';
+        return `<div class="cat-link cat-sub ${F.sub===s?'ativo':''}" onclick="event.stopPropagation();setSub('${s.replace(/'/g,"\\'")}')">
+          <span>${s}</span><small>${ns}</small></div>`;
+      }).join('') : '';
+      return `<div class="cat-link ${ativo?'ativo':''}" onclick="setCat('${c.id}')">
+          <span>${c.nome}</span><small>${n}</small></div>${subs}`;
+    }).join('');
+
+  // marcas
+  const marcas = [...new Set(PRODUTOS.map(p=>p.marca).filter(Boolean))].sort();
+  document.getElementById('lista-marcas').innerHTML = marcas.map(m=>
+    `<label class="chk"><input type="checkbox" value="${m}" ${F.marcas.includes(m)?'checked':''}
+      onchange="toggleMarca('${m.replace(/'/g,"\\'")}')"> ${m}</label>`).join('');
+
+  // faixas de preço
+  document.getElementById('lista-precos').innerHTML = FAIXAS.map(f=>
+    `<label class="chk"><input type="radio" name="faixa" ${F.faixa===f.id?'checked':''}
+      onchange="F.faixa='${f.id}';render()"> ${f.label}</label>`).join('');
+}
+
+function setCat(id){ F.cat = id; F.sub=''; F.grupo=''; montarFiltros(); render(); }
+function setSub(s){ F.sub = (F.sub===s ? '' : s); montarFiltros(); render(); }
+function toggleMarca(m){
+  F.marcas = F.marcas.includes(m) ? F.marcas.filter(x=>x!==m) : [...F.marcas, m];
+  render();
+}
+function limparFiltros(){
+  F.cat=''; F.sub=''; F.grupo=''; F.q=''; F.marcas=[]; F.faixa='';
+  document.getElementById('busca').value='';
+  montarFiltros(); render();
+}
+
+function filtrar(){
+  const q = F.q.toLowerCase().trim();
+  return PRODUTOS.filter(p=>{
+    if(F.grupo){ const c = catById(p.categoria); if(!c || c.grupo!==F.grupo) return false; }
+    if(F.cat && p.categoria!==F.cat) return false;
+    if(F.sub && p.sub!==F.sub) return false;
+    if(F.marcas.length && !F.marcas.includes(p.marca)) return false;
+    if(F.faixa){
+      const f = FAIXAS.find(x=>x.id===F.faixa);
+      if(!p.preco || p.preco < f.min || p.preco > f.max) return false;
+    }
+    if(q){
+      const alvo = [p.nome, p.marca, p.calibre, p.sub, p.descricao,
+                    (catById(p.categoria)||{}).nome].join(' ').toLowerCase();
+      if(!alvo.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function render(){
+  let lista = filtrar();
+  const ordem = document.getElementById('ordem').value;
+  if(ordem==='menor') lista.sort((a,b)=>(a.preco||Infinity)-(b.preco||Infinity));
+  if(ordem==='maior') lista.sort((a,b)=>(b.preco||0)-(a.preco||0));
+  if(ordem==='az')    lista.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+
+  // título e migalha
+  const c = catById(F.cat);
+  document.getElementById('titulo').textContent =
+    F.sub ? F.sub : c ? c.nome : F.grupo==='tiro' ? 'Caça & Tiro'
+    : F.grupo==='pesca' ? 'Pesca Esportiva' : 'Todos os produtos';
+  document.getElementById('crumb').textContent =
+    c ? 'Catálogo · ' + (c.grupo==='tiro' ? 'Caça & Tiro' : 'Pesca') : 'Catálogo';
+
+  // chips dos filtros ativos
+  const chips = [];
+  if(F.grupo) chips.push([F.grupo==='tiro'?'Caça & Tiro':'Pesca', "F.grupo='';montarFiltros();render()"]);
+  if(c)       chips.push([c.nome, "setCat('')"]);
+  if(F.sub)   chips.push([F.sub, "setSub(F.sub)"]);
+  if(F.q)     chips.push(['"'+F.q+'"', "F.q='';document.getElementById('busca').value='';render()"]);
+  F.marcas.forEach(m=> chips.push([m, `toggleMarca('${m}');montarFiltros()`]));
+  if(F.faixa) chips.push([FAIXAS.find(f=>f.id===F.faixa).label, "F.faixa='';montarFiltros();render()"]);
+  document.getElementById('chips').innerHTML = chips.map(([t,fn])=>
+    `<span class="chip">${t}<button onclick="${fn}" aria-label="Remover filtro">×</button></span>`).join('');
+
+  document.getElementById('count').textContent =
+    lista.length + (lista.length===1 ? ' produto encontrado' : ' produtos encontrados');
+  document.getElementById('grid').innerHTML = lista.map(cardHTML).join('');
+
+  const vazio = document.getElementById('sem-resultado');
+  vazio.hidden = lista.length > 0;
+  if(!lista.length){
+    vazio.innerHTML = `<div class="vazio">${icon('busca',42)}
+      <div><b>Nenhum produto encontrado</b><br>
+      <span style="font-size:13px">Tente outra busca ou peça direto pra gente — trabalhamos com encomenda.</span></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+        <button class="btn btn-ghost" onclick="limparFiltros()">Limpar filtros</button>
+        <a class="btn btn-wa" target="_blank" href="${waLink('Olá! Procurei no site e não achei o que preciso. Vocês conseguem por encomenda?')}">
+          ${icon('wa',18)} Pedir por encomenda</a>
+      </div></div>`;
+  }
+}
+</script>
+</body>
+</html>

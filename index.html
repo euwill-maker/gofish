@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GOFISH Caça &amp; Pesca — Pato Branco/PR | Armas, Munições e Pesca</title>
+<meta name="description" content="GOFISH Caça &amp; Pesca em Pato Branco/PR. Armas, munições, airsoft, artigos táticos, caiaques e equipamentos de pesca. Monte seu pedido e finalize no WhatsApp.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#12140f">
+<link rel="icon" href="assets/img/favicon.png" type="image/png">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div id="header-slot"></div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <span class="hero-tag" id="hero-tag"></span>
+    <h1>Tudo para a <em>caça</em>,<br>o tiro e a <em>pesca</em></h1>
+    <p>Armas, munições, airsoft, equipamento tático, caiaques e o melhor da pesca esportiva.
+       Monte seu pedido aqui e finalize direto no WhatsApp com quem entende do assunto.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="catalogo.html">Ver catálogo completo</a>
+      <a class="btn btn-ghost" id="hero-wa" target="_blank">Falar com um vendedor</a>
+    </div>
+    <div class="hero-stats">
+      <div><b id="stat-anos">—</b><span>anos em Pato Branco</span></div>
+      <div><b id="stat-produtos">—</b><span>produtos no catálogo</span></div>
+      <div><b>100%</b><span>produtos originais</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- SELOS -->
+<section class="selos"><div class="wrap" id="selos"></div></section>
+
+<!-- CATEGORIAS -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <span>Navegue por linha</span>
+      <h2>Categorias</h2>
+      <p>Do calibre .22 à vara de carretilha — está tudo aqui.</p>
+    </div>
+    <div class="cats" id="cats"></div>
+  </div>
+</section>
+
+<!-- DESTAQUES -->
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+      <div>
+        <span>Selecionados</span>
+        <h2>Destaques da loja</h2>
+      </div>
+      <a class="link" href="catalogo.html">Ver todos os produtos →</a>
+    </div>
+    <div class="grid-produtos" id="destaques"></div>
+  </div>
+</section>
+
+<!-- BLOCOS DUPLOS -->
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="duplo">
+      <div class="bloco tiro">
+        <h3>Caça &amp; Tiro</h3>
+        <p>Armas de fogo, munições de todos os calibres, pressão, airsoft, recarga e linha tática completa.</p>
+        <a class="btn btn-primary" href="catalogo.html?grupo=tiro">Ver linha de tiro</a>
+      </div>
+      <div class="bloco pesca">
+        <h3>Pesca Esportiva</h3>
+        <p>Varas, molinetes, carretilhas, iscas artificiais, linhas e todos os acessórios para sua pescaria.</p>
+        <a class="btn btn-primary" href="catalogo.html?grupo=pesca">Ver linha de pesca</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AVISO LEGAL -->
+<section class="wrap" style="padding-bottom:20px">
+  <div class="aviso-legal" id="aviso-legal"></div>
+</section>
+
+<!-- SOBRE -->
+<section class="section" id="sobre">
+  <div class="wrap sobre">
+    <div>
+      <div class="section-head">
+        <span>Loja física</span>
+        <h2>Venha conhecer</h2>
+        <p>Há 10 anos em Pato Branco, na Av. Tupi. Atendimento consultivo presencial e pelo WhatsApp,
+           produtos originais com nota fiscal — e clube de tiro para você treinar e manter a habitualidade.</p>
+      </div>
+      <ul id="sobre-lista"></ul>
+      <a class="btn btn-wa" id="sobre-wa" target="_blank" style="margin-top:20px"></a>
+    </div>
+    <div class="mapa" id="mapa"></div>
+  </div>
+</section>
+
+<div id="footer-slot"></div>
+
+<script src="assets/products.js"></script>
+<script src="assets/app.js"></script>
+<script>
+function initHome(){
+  document.getElementById('hero-tag').innerHTML = icon('loja',14) + ' ' + CONFIG.endereco + ' · ' + CONFIG.cidade;
+  document.getElementById('stat-anos').textContent = CONFIG.anos + '+';
+  document.getElementById('hero-wa').href = waLink('Olá! Vim pelo site e quero falar com um vendedor.');
+  document.getElementById('hero-wa').innerHTML = icon('wa',18) + ' Falar com um vendedor';
+  document.getElementById('stat-produtos').textContent = PRODUTOS.length + '+';
+
+  document.getElementById('selos').innerHTML = [
+    ['check','Produtos originais','Nota fiscal e garantia de fábrica em todos os itens'],
+    ['tatico','Clube de Tiro próprio','Treine com segurança e mantenha sua habitualidade em dia'],
+    ['loja','Loja física há '+CONFIG.anos+' anos','Av. Tupi, 1921 — Pato Branco/PR. Retire na loja ou combine a entrega']
+  ].map(([i,t,d])=>`<div class="selo">${icon(i,26)}<div><b>${t}</b><span>${d}</span></div></div>`).join('');
+
+  document.getElementById('cats').innerHTML = CATEGORIAS.map(c=>{
+    const n = PRODUTOS.filter(p=>p.categoria===c.id).length;
+    return `<a class="cat" href="catalogo.html?cat=${c.id}">
+      <span class="cat-ico">${icon(c.icone,22)}</span>
+      <b>${c.nome}</b>
+      <span>${n} ${n===1?'produto':'produtos'}</span>
+    </a>`;
+  }).join('');
+
+  document.getElementById('destaques').innerHTML =
+    PRODUTOS.filter(p=>p.destaque).slice(0,8).map(cardHTML).join('');
+
+  document.getElementById('aviso-legal').innerHTML = icon('alerta',22) +
+    `<div><b>Produtos controlados pelo Exército Brasileiro</b>
+     A comercialização de armas de fogo e munições é permitida somente a maiores de 25 anos, mediante
+     apresentação de CR (Certificado de Registro) válido e autorização de compra. Este site é um catálogo
+     informativo: não realizamos vendas nem pagamentos online — todo pedido é finalizado presencialmente
+     ou via WhatsApp, com conferência da documentação.</div>`;
+
+  document.getElementById('sobre-lista').innerHTML = [
+    ['pin', CONFIG.endereco, CONFIG.cidade],
+    ['relogio', CONFIG.horario, 'Horário de atendimento'],
+    ['fone', CONFIG.telefone, 'Vendas pelo WhatsApp'],
+    ['check', CONFIG.instagramUser, 'Acompanhe as novidades no Instagram']
+  ].map(([i,t,s])=>`<li>${icon(i,20)}<div><b>${t}</b><span>${s}</span></div></li>`).join('');
+
+  const wa = document.getElementById('sobre-wa');
+  wa.href = waLink('Olá! Vim pelo site e quero tirar uma dúvida.');
+  wa.innerHTML = icon('wa',18) + ' Chamar no WhatsApp';
+
+  document.getElementById('mapa').innerHTML =
+    `<iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+      src="https://www.google.com/maps?q=${encodeURIComponent(CONFIG.mapsQuery)}&output=embed"></iframe>`;
+}
+</script>
+</body>
+</html>
