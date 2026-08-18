@@ -7,6 +7,20 @@
 <meta name="description" content="GOFISH Caça &amp; Pesca em Pato Branco/PR. Armas, munições, airsoft, artigos táticos, caiaques e equipamentos de pesca. Monte seu pedido e finalize no WhatsApp.">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#12140f">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GOFISH Caça &amp; Pesca">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:title" content="GOFISH Caça & Pesca — Pato Branco/PR">
+<meta property="og:description" content="Armas, munições, airsoft, artigos táticos e tudo para a pesca esportiva. Monte seu pedido e finalize no WhatsApp. Av. Tupi, 1921 — Pato Branco/PR.">
+<meta property="og:url" content="https://euwill-maker.github.io/gofish/">
+<meta property="og:image" content="https://euwill-maker.github.io/gofish/assets/img/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GOFISH Caça & Pesca — Pato Branco/PR">
+<meta name="twitter:description" content="Armas, munições, airsoft, artigos táticos e tudo para a pesca esportiva. Monte seu pedido e finalize no WhatsApp. Av. Tupi, 1921 — Pato Branco/PR.">
+<meta name="twitter:image" content="https://euwill-maker.github.io/gofish/assets/img/og.jpg">
+<link rel="canonical" href="https://euwill-maker.github.io/gofish/">
 <link rel="icon" href="assets/img/favicon.png" type="image/png">
 <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -81,6 +95,13 @@
   </div>
 </section>
 
+<!-- CLUBE DE TIRO -->
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="clube" id="clube"></div>
+  </div>
+</section>
+
 <!-- AVISO LEGAL -->
 <section class="wrap" style="padding-bottom:20px">
   <div class="aviso-legal" id="aviso-legal"></div>
@@ -133,6 +154,21 @@ function initHome(){
   document.getElementById('destaques').innerHTML =
     PRODUTOS.filter(p=>p.destaque).slice(0,8).map(cardHTML).join('');
 
+  document.getElementById('clube').innerHTML = `
+    <span class="clube-tag">${icon('tatico',13)} Clube de Tiro GOFISH</span>
+    <h2>Treine com segurança e mantenha sua habitualidade em dia</h2>
+    <p>Além da loja, temos clube de tiro próprio em Pato Branco. Ideal para quem está tirando o CR,
+       precisa comprovar habitualidade ou simplesmente quer treinar com orientação de quem entende.</p>
+    <ul>
+      ${[['check','Estande com instrutor','Acompanhamento para iniciantes e experientes'],
+         ['check','Habitualidade comprovada','Registro das sessões para o seu processo'],
+         ['check','Equipamento na hora','Munição, proteção auricular e óculos disponíveis'],
+         ['check','Primeira vez atirando?','A gente te ensina do zero, sem pressa']]
+        .map(([i,t,d])=>`<li>${icon(i,18)}<div><b>${t}</b><br><span style="color:var(--muted);font-size:12.5px">${d}</span></div></li>`).join('')}
+    </ul>
+    <a class="btn btn-wa" target="_blank" href="${waLink('Olá! Vim pelo site e quero saber sobre o Clube de Tiro (agendamento, valores e habitualidade).')}"
+       onclick="evento('contact',{metodo:'whatsapp_clube'})">${icon('wa',18)} Falar sobre o clube</a>`;
+
   document.getElementById('aviso-legal').innerHTML = icon('alerta',22) +
     `<div><b>Produtos controlados pelo Exército Brasileiro</b>
      A comercialização de armas de fogo e munições é permitida somente a maiores de 25 anos, mediante
@@ -150,6 +186,10 @@ function initHome(){
   const wa = document.getElementById('sobre-wa');
   wa.href = waLink('Olá! Vim pelo site e quero tirar uma dúvida.');
   wa.innerHTML = icon('wa',18) + ' Chamar no WhatsApp';
+  wa.onclick = () => evento('contact',{metodo:'whatsapp_sobre'});
+  wa.insertAdjacentHTML('afterend',
+    `<a class="btn btn-ghost" href="${rotaMaps()}" target="_blank" rel="noopener"
+        style="margin-top:20px;margin-left:10px" onclick="evento('como_chegar')">${icon('pin',18)} Como chegar</a>`);
 
   document.getElementById('mapa').innerHTML =
     `<iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade"

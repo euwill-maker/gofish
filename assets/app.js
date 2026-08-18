@@ -31,6 +31,8 @@ const icon = (n, s = 22) =>
 
 /* ---------- helpers ---------- */
 const money = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+/* texto comparável: sem acento e em minúsculas (cliente digita "municao", não "munição") */
+const semAcento = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const slugify = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const catById = id => CATEGORIAS.find(c => c.id === id);
@@ -56,6 +58,59 @@ function imgOf(p) {
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 
+/* ---------- HORÁRIO: a loja está aberta agora? ---------- */
+const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+const hhmm = m => String(Math.floor(m / 60)).padStart(2, '0') + 'h' + (m % 60 ? String(m % 60).padStart(2, '0') : '');
+
+function statusLoja() {
+  const exp = CONFIG.expediente || {};
+  const agora = new Date();
+  const min = agora.getHours() * 60 + agora.getMinutes();
+  const hoje = exp[agora.getDay()];
+  if (hoje && min >= hoje[0] && min < hoje[1]) {
+    return { aberto: true, texto: 'Aberto agora · fecha às ' + hhmm(hoje[1]) };
+  }
+  if (hoje && min < hoje[0]) {
+    return { aberto: false, texto: 'Abre hoje às ' + hhmm(hoje[0]) };
+  }
+  for (let i = 1; i <= 7; i++) {
+    const d = (agora.getDay() + i) % 7;
+    if (exp[d]) return { aberto: false, texto: 'Abre ' + DIAS[d] + ' às ' + hhmm(exp[d][0]) };
+  }
+  return { aberto: false, texto: CONFIG.horario };
+}
+
+const rotaMaps = () => 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(CONFIG.mapsQuery);
+
+/* ---------- RASTREAMENTO (Meta Pixel + GA4) ---------- */
+function iniciarRastreamento() {
+  if (CONFIG.metaPixel) {
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
+    (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', CONFIG.metaPixel); fbq('track', 'PageView');
+  }
+  if (CONFIG.ga4) {
+    const g = document.createElement('script');
+    g.async = true; g.src = 'https://www.googletagmanager.com/gtag/js?id=' + CONFIG.ga4;
+    document.head.appendChild(g);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { dataLayer.push(arguments); };
+    gtag('js', new Date()); gtag('config', CONFIG.ga4);
+  }
+}
+
+/* evento único que alimenta os dois — e não quebra se nenhum estiver configurado */
+function evento(nome, dados = {}) {
+  const mapaMeta = { add_to_cart: 'AddToCart', begin_checkout: 'InitiateCheckout',
+                     contact: 'Contact', view_item: 'ViewContent', search: 'Search' };
+  try { if (window.fbq && mapaMeta[nome]) fbq('track', mapaMeta[nome], dados); } catch (e) {}
+  try { if (window.gtag) gtag('event', nome, dados); } catch (e) {}
+  (window.dataLayer = window.dataLayer || []).push({ event: nome, ...dados });
+}
+
 /* ---------- CARRINHO ---------- */
 const CART_KEY = 'gofishing_cart';
 let cart = [];
@@ -71,6 +126,7 @@ function addToCart(id, qtd = 1) {
   const item = cart.find(i => i.id === id);
   if (item) item.qtd += qtd; else cart.push({ id, qtd });
   saveCart();
+  evento('add_to_cart', { currency: 'BRL', value: p.preco * qtd, items: [{ item_name: p.nome }] });
   openCart();
 }
 function setQtd(id, delta) {
@@ -143,6 +199,7 @@ function pedirItem(id) {
   const p = PRODUTOS.find(x => x.id === id);
   if (!p) return;
   const preco = p.preco ? ` — ${money(p.preco)}` : ' — sob consulta';
+  evento('contact', { metodo: 'whatsapp_produto', produto: p.nome, value: p.preco, currency: 'BRL' });
   window.open(waLink(`Olá, ${CONFIG.nome}! Tenho interesse neste produto do site:\n\n*${p.nome}*${preco}\n\nPode me passar mais informações?`), '_blank');
 }
 function finalizarPedido() {
@@ -159,6 +216,8 @@ function finalizarPedido() {
   txt += `\n*Total: ${money(cartTotal())}*`;
   if (controlado) txt += `\n\n(Sei que os itens controlados exigem documentação — já tenho/quero orientação sobre o CR.)`;
   if (nome) txt += `\n\nMeu nome: ${nome}`;
+  evento('begin_checkout', { currency: 'BRL', value: cartTotal(),
+    items: cart.map(i => ({ item_name: (PRODUTOS.find(x => x.id === i.id) || {}).nome, quantity: i.qtd })) });
   window.open(waLink(txt), '_blank');
 }
 
@@ -219,6 +278,9 @@ function abrirProduto(id) {
           ${p.sub ? `<div><span>Tipo</span><b>${p.sub}</b></div>` : ''}
           <div><span>Disponibilidade</span><b>${p.disponivel ? 'Em estoque' : 'Sob encomenda'}</b></div>
         </div>
+        <button class="link-compartilhar" id="btn-compartilhar" onclick="compartilharProduto('${p.id}')">
+          ${icon('seta', 15)} Copiar link deste produto</button>
+        ${relacionadosHTML(p)}
         <div class="modal-acoes">
           <button class="btn btn-primary btn-block" onclick="addToCart('${p.id}');fecharProduto()">Adicionar ao pedido</button>
           <button class="btn btn-wa btn-block" onclick="pedirItem('${p.id}')">${icon('wa', 18)} Pedir só este item</button>
@@ -227,6 +289,21 @@ function abrirProduto(id) {
     </div>`;
   $('#modal').classList.add('open');
   document.body.style.overflow = 'hidden';
+  history.replaceState(null, '', '?produto=' + p.id);
+  evento('view_item', { items: [{ item_name: p.nome }], value: p.preco, currency: 'BRL' });
+}
+
+/* link do produto para o vendedor mandar no WhatsApp */
+function compartilharProduto(id) {
+  const p = PRODUTOS.find(x => x.id === id);
+  const url = location.origin + location.pathname + '?produto=' + id;
+  if (navigator.share) {
+    navigator.share({ title: p.nome, text: `${p.nome} — ${CONFIG.nome}`, url }).catch(() => {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(url);
+    const b = document.getElementById('btn-compartilhar');
+    if (b) { const t = b.innerHTML; b.innerHTML = 'Link copiado!'; setTimeout(() => b.innerHTML = t, 1800); }
+  }
 }
 function trocarFoto(botao, src) {
   document.getElementById('modal-foto').src = src;
@@ -235,6 +312,21 @@ function trocarFoto(botao, src) {
 function fecharProduto() {
   $('#modal').classList.remove('open');
   document.body.style.overflow = '';
+  if (location.search.includes('produto=')) history.replaceState(null, '', location.pathname);
+}
+
+function relacionadosHTML(p) {
+  const irmaos = PRODUTOS.filter(x => x.categoria === p.categoria && x.id !== p.id).slice(0, 4);
+  if (irmaos.length < 2) return '';
+  return `<div class="relacionados">
+    <h4>Quem viu isso, levou também</h4>
+    <div class="relacionados-lista">
+      ${irmaos.map(r => `<button class="relacionado" onclick="abrirProduto('${r.id}')">
+        <img src="${imgOf(r)}" alt="${r.nome}" loading="lazy">
+        <span>${r.nome}</span>
+        <b>${r.preco ? money(r.preco) : 'Sob consulta'}</b>
+      </button>`).join('')}
+    </div></div>`;
 }
 
 /* ---------- HEADER / NAV compartilhados ---------- */
@@ -245,7 +337,8 @@ function montarHeader() {
 
   $('#header-slot').innerHTML = `
   <div class="topbar"><div class="wrap">
-    <span class="so-desktop">${CONFIG.endereco} · ${CONFIG.cidade} · ${CONFIG.horario}</span>
+    <span class="status-loja ${statusLoja().aberto ? 'aberto' : ''}">${statusLoja().texto}</span>
+    <span class="so-desktop">${CONFIG.endereco} · ${CONFIG.cidade}</span>
     <span style="display:flex;gap:14px;align-items:center">
       ${CONFIG.instagram ? `<a href="${CONFIG.instagram}" target="_blank" rel="noopener">${CONFIG.instagramUser || 'Instagram'}</a>` : ''}
       <a href="${waLink('Olá! Vim pelo site.')}" target="_blank">${icon('wa', 14)} <strong>${CONFIG.telefone}</strong></a>
@@ -293,7 +386,12 @@ function montarFooter() {
           e tudo para a pesca${CONFIG.clubeTiro ? ' — além do nosso clube de tiro' : ''}.
           Atendimento consultivo e pedidos pelo WhatsApp.
         </p>
-        <a class="btn btn-wa" href="${waLink('Olá! Vim pelo site.')}" target="_blank">${icon('wa', 18)} Falar no WhatsApp</a>
+        <div style="display:flex;gap:9px;flex-wrap:wrap">
+          <a class="btn btn-wa" href="${waLink('Olá! Vim pelo site.')}" target="_blank"
+             onclick="evento('contact',{metodo:'whatsapp_rodape'})">${icon('wa', 18)} Falar no WhatsApp</a>
+          <a class="btn btn-ghost" href="${rotaMaps()}" target="_blank" rel="noopener"
+             onclick="evento('como_chegar')">${icon('pin', 18)} Como chegar</a>
+        </div>
       </div>
       <div><h4>Caça &amp; Tiro</h4><ul>${CATEGORIAS.filter(c => c.grupo === 'tiro').map(link).join('')}</ul></div>
       <div><h4>Pesca</h4><ul>${CATEGORIAS.filter(c => c.grupo === 'pesca').map(link).join('')}</ul></div>
@@ -350,9 +448,12 @@ function irBusca(e) {
 
 /* ---------- INIT ---------- */
 document.addEventListener('DOMContentLoaded', () => {
+  iniciarRastreamento();
   montarHeader();
   montarFooter();
   montarEstruturaComum();
   if (typeof initHome === 'function') initHome();
   if (typeof initCatalogo === 'function') initCatalogo();
+  const pedido = new URLSearchParams(location.search).get('produto');
+  if (pedido && PRODUTOS.some(p => p.id === pedido)) abrirProduto(pedido);
 });
